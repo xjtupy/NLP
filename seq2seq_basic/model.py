@@ -4,7 +4,8 @@
 # @Author: Vincent
 # @File  : model.py
 
-import tensorflow  as tf
+import tensorflow as tf
+from tensorflow.python.util import nest
 
 from NLP.seq2seq_basic import config
 
@@ -137,6 +138,39 @@ class Seq2SeqModel(object):
                                                                                       impute_finished=True,
                                                                                       maximum_iterations=max_target_sequence_length)
         return predicting_decoder_output
+
+    def decoding_layer_predict2(self, decoder_embeddings, rnn_cell, output_layer, max_target_sequence_length,
+                                encoder_state):
+        """
+        构造decoder层——预测2：使用beam search策略
+        :param decoder_embeddings: 词嵌入矩阵
+        :param rnn_cell: 与训练过程相同的RNN cell
+        :param output_layer: 与训练过程相同的全连接层
+        :param max_target_sequence_length: target数据序列中字串最大长度
+        :param encoder_state: encoder端编码的状态向量
+        :return: 预测输出
+        """
+        # 定义batch_size作为feed_dict参数
+        input_batch_size = tf.placeholder(tf.int32, (None), name='input_batch_size')
+
+        # 创建一个常量tensor并复制为batch_size的大小
+        start_tokens = tf.tile(tf.constant([self.dataInfo.target_letter_to_int['<GO>']], dtype=tf.int32),
+                               input_batch_size,
+                               name='start_tokens')
+        end_token = self.dataInfo.target_letter_to_int['<EOS>']
+
+        encoder_state = nest.map_structure(lambda s: tf.contrib.seq2seq.tile_batch(s, 3),
+                                           encoder_state)
+        # 创建helper对象，只在预测时候用
+        inference_decoder = tf.contrib.seq2seq.BeamSearchDecoder(cell=rnn_cell, embedding=decoder_embeddings,
+                                                                 start_tokens=start_tokens,
+                                                                 end_token=end_token,
+                                                                 initial_state=encoder_state,
+                                                                 beam_width=3,
+                                                                 output_layer=output_layer)
+        beam_decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
+                                                                       maximum_iterations=max_target_sequence_length)
+        return beam_decoder_outputs
 
     def seq2seq_model(self, input_data, source_sequence_length, targets, target_sequence_length,
                       max_target_sequence_length):
