@@ -64,6 +64,35 @@ class Seq2SeqModel(object):
 
         return encoder_state
 
+    def get_encoder_layer2(self, input_data, source_sequence_length):
+        """
+        构造Encoder层：多层双向LSTM
+        :param input_data: 输入tensor
+        :param source_sequence_length: 源数据的序列长度
+        :return: 编码器最终的状态向量
+        """
+        # 1、encoder embedding
+        encoder_embed_input = tf.contrib.layers.embed_sequence(input_data, self.dataInfo.source_vocab_size,
+                                                               config.encoding_embedding_size)
+        _inputs = encoder_embed_input
+        for _ in range(config.num_layers):
+            # 为什么在这加个variable_scope,被逼的,tf在rnn_cell的__call__中非要搞一个命名空间检查
+            # 恶心的很.如果不在这加的话,会报错的.
+            with tf.variable_scope(None, default_name="bidirectional-rnn"):
+                rnn_cell_bw = rnn_cell_fw = tf.contrib.rnn.LSTMCell(config.rnn_size)
+                ((encoder_fw_outputs, encoder_bw_outputs), (encoder_fw_final_state, encoder_bw_final_state)) \
+                    = tf.nn.bidirectional_dynamic_rnn(cell_fw=rnn_cell_fw,
+                                                      cell_bw=rnn_cell_bw,
+                                                      inputs=_inputs,
+                                                      sequence_length=source_sequence_length,
+                                                      dtype=tf.float32)
+                _inputs = tf.concat((encoder_fw_outputs, encoder_bw_outputs), 2)
+        encoder_final_state_h = tf.concat((encoder_fw_final_state.h, encoder_bw_final_state.h), 1)
+        encoder_final_state_c = tf.concat((encoder_fw_final_state.c, encoder_bw_final_state.c), 1)
+        encoder_final_state = tf.contrib.rnn.LSTMStateTuple(c=encoder_final_state_c, h=encoder_final_state_h)
+        encoder_final_output = _inputs
+        return encoder_final_state
+
     def decoding_layer_train(self, decoder_input, encoder_state, target_sequence_length, max_target_sequence_length):
         """
         构造decoder层——训练
