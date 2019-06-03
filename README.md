@@ -5,4 +5,5 @@
 
 ### 感谢大佬的付出
 seq2seq：https://zhuanlan.zhihu.com/p/27608348  
-bert pytorch：https://github.com/codertimo/BERT-pytorch
+bert pytorch：https://github.com/codertimo/BERT-pytorch  
+bert tensorflow：https://github.com/google-research/bert
