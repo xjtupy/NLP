@@ -4,5 +4,5 @@
 3. Bert Google源码和pytorch版本  
 
 ### 感谢大佬的付出
-seq2seq：https://zhuanlan.zhihu.com/p/27608348
+seq2seq：https://zhuanlan.zhihu.com/p/27608348  
 bert pytorch：https://github.com/codertimo/BERT-pytorch
