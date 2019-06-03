@@ -190,7 +190,6 @@ class Seq2SeqModel(object):
 
         encoder_state = nest.map_structure(lambda s: tf.contrib.seq2seq.tile_batch(s, 3),
                                            encoder_state)
-        # 创建helper对象，只在预测时候用
         inference_decoder = tf.contrib.seq2seq.BeamSearchDecoder(cell=rnn_cell, embedding=decoder_embeddings,
                                                                  start_tokens=start_tokens,
                                                                  end_token=end_token,
