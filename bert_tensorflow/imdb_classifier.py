@@ -1,18 +1,9 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""BERT finetuning runner."""
+"""
+IMDB情感分类
+运行脚本：
+python imdb_classifier.py --data_dir=imdb --task_name=imdb --vocab_file=bert_model/uncased_L-12_H-768_A-12/vocab.txt --bert_config_file=bert_model/uncased_L-12_H-768_A-12/bert_config.json --output_dir=output --do_train=true --do_eval=false --do_test=true --init_checkpoint=bert_model/uncased_L-12_H-768_A-12/bert_model.ckpt --max_seq_length=200 --train_batch_size=16 --learning_rate=5e-5 --num_train_epochs=2.0
+
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,8 +13,9 @@ import collections
 import csv
 import os
 import tensorflow as tf
+import numpy as np
 
-from NLP.bert_tensorflow import tokenization, modeling, optimization
+import tokenization, modeling, optimization
 
 flags = tf.flags
 
@@ -203,174 +195,48 @@ class DataProcessor(object):
             return lines
 
 
-class XnliProcessor(DataProcessor):
-    """Processor for the XNLI data set."""
+class IMDBProcessor(DataProcessor):
+    """
+    IMDB data processor
+    """
 
-    def __init__(self):
-        self.language = "zh"
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        lines = self._read_tsv(
-            os.path.join(data_dir, "multinli",
-                         "multinli.train.%s.tsv" % self.language))
+    def _create_examples(self, data_dir, type):
+        dir = os.path.join(data_dir, type)
         examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = "train-%d" % (i)
-            text_a = tokenization.convert_to_unicode(line[0])
-            text_b = tokenization.convert_to_unicode(line[1])
-            label = tokenization.convert_to_unicode(line[2])
-            if label == tokenization.convert_to_unicode("contradictory"):
-                label = tokenization.convert_to_unicode("contradiction")
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+
+        # 读取正面评论和负面评论内容，并添加相应标签
+        for label_type in ['neg', 'pos']:
+            dir_name = os.path.join(dir, label_type)
+            for fname in os.listdir(dir_name):
+                if fname[-4:] == '.txt':
+                    guid = "%s" % fname
+                    f = open(os.path.join(dir_name, fname), encoding='utf-8')
+                    text_a = tokenization.convert_to_unicode(f.read())
+                    if label_type == 'neg':
+                        label = tokenization.convert_to_unicode("0")
+                    else:
+                        label = tokenization.convert_to_unicode("1")
+                examples.append(
+                    InputExample(guid=guid, text_a=text_a, label=label))
         return examples
 
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = "dev-%d" % i
-            language = tokenization.convert_to_unicode(line[0])
-            if language != tokenization.convert_to_unicode(self.language):
-                continue
-            text_a = tokenization.convert_to_unicode(line[6])
-            text_b = tokenization.convert_to_unicode(line[7])
-            label = tokenization.convert_to_unicode(line[1])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    def shuffle(self, examples):
+        np.random.shuffle(examples)
         return examples
 
-    def get_labels(self):
-        """See base class."""
-        return ["contradiction", "entailment", "neutral"]
-
-
-class MnliProcessor(DataProcessor):
-    """Processor for the MultiNLI data set (GLUE version)."""
-
     def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+        examples = self._create_examples(data_dir, "train")
+        return self.shuffle(examples)
 
     def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev_matched.tsv")),
-            "dev_matched")
+        pass
 
     def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test_matched.tsv")), "test")
+        examples = self._create_examples(data_dir, "test")
+        return self.shuffle(examples)
 
     def get_labels(self):
-        """See base class."""
-        return ["contradiction", "entailment", "neutral"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = "%s-%s" % (set_type, tokenization.convert_to_unicode(line[0]))
-            text_a = tokenization.convert_to_unicode(line[8])
-            text_b = tokenization.convert_to_unicode(line[9])
-            if set_type == "test":
-                label = "contradiction"
-            else:
-                label = tokenization.convert_to_unicode(line[-1])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-        return examples
-
-
-class MrpcProcessor(DataProcessor):
-    """Processor for the MRPC data set (GLUE version)."""
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
-
-    def get_labels(self):
-        """See base class."""
         return ["0", "1"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = "%s-%s" % (set_type, i)
-            text_a = tokenization.convert_to_unicode(line[3])
-            text_b = tokenization.convert_to_unicode(line[4])
-            if set_type == "test":
-                label = "0"
-            else:
-                label = tokenization.convert_to_unicode(line[0])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-        return examples
-
-
-class ColaProcessor(DataProcessor):
-    """Processor for the CoLA data set (GLUE version)."""
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
-
-    def get_labels(self):
-        """See base class."""
-        return ["0", "1"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            # Only the test set has a header
-            if set_type == "test" and i == 0:
-                continue
-            guid = "%s-%s" % (set_type, i)
-            if set_type == "test":
-                text_a = tokenization.convert_to_unicode(line[1])
-                label = "0"
-            else:
-                text_a = tokenization.convert_to_unicode(line[3])
-                label = tokenization.convert_to_unicode(line[1])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
-        return examples
 
 
 def convert_single_example(ex_index, example, label_list, max_seq_length,
@@ -682,12 +548,20 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
             def metric_fn(per_example_loss, label_ids, logits, is_real_example):
                 predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
-                accuracy = tf.metrics.accuracy(
-                    labels=label_ids, predictions=predictions, weights=is_real_example)
+                accuracy = tf.metrics.accuracy(labels=label_ids, predictions=predictions, weights=is_real_example)
                 loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+
+                # 新加入输出指标：auc，recall，precision
+                auc = tf.metrics.auc(labels=label_ids, predictions=predictions, weights=is_real_example)
+                precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
+                recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
+
                 return {
                     "eval_accuracy": accuracy,
                     "eval_loss": loss,
+                    "eval_auc": auc,
+                    "eval_precision": precision,
+                    "eval_recall": recall
                 }
 
             eval_metrics = (metric_fn,
@@ -783,10 +657,7 @@ def main(_):
     tf.logging.set_verbosity(tf.logging.INFO)
 
     processors = {
-        "cola": ColaProcessor,
-        "mnli": MnliProcessor,
-        "mrpc": MrpcProcessor,
-        "xnli": XnliProcessor,
+        "imdb": IMDBProcessor,
     }
 
     tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,
