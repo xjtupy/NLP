@@ -1,8 +1,18 @@
 """
-IMDB情感分类
+使用bert预训练模型 uncased_L-12_H-768_A-12 做IMDB情感分类
 运行脚本：
-python imdb_classifier.py --data_dir=imdb --task_name=imdb --vocab_file=bert_model/uncased_L-12_H-768_A-12/vocab.txt --bert_config_file=bert_model/uncased_L-12_H-768_A-12/bert_config.json --output_dir=output --do_train=true --do_eval=false --do_test=true --init_checkpoint=bert_model/uncased_L-12_H-768_A-12/bert_model.ckpt --max_seq_length=200 --train_batch_size=16 --learning_rate=5e-5 --num_train_epochs=2.0
-
+python imdb_classifier.py
+    --data_dir=imdb
+    --task_name=imdb
+    --vocab_file=bert_model/uncased_L-12_H-768_A-12/vocab.txt
+    --bert_config_file=bert_model/uncased_L-12_H-768_A-12/bert_config.json
+    --output_dir=output
+    --do_train=true
+    --do_eval=true
+    --do_test=false
+    --init_checkpoint=bert_model/uncased_L-12_H-768_A-12/bert_model.ckpt
+    --max_seq_length=200 --train_batch_size=16
+    --learning_rate=5e-5 --num_train_epochs=2.0
 """
 
 from __future__ import absolute_import
@@ -229,7 +239,8 @@ class IMDBProcessor(DataProcessor):
         return self.shuffle(examples)
 
     def get_dev_examples(self, data_dir):
-        pass
+        examples = self._create_examples(data_dir, "test")
+        return self.shuffle(examples)
 
     def get_test_examples(self, data_dir):
         examples = self._create_examples(data_dir, "test")
