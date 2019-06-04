@@ -758,7 +758,11 @@ def main(_):
             seq_length=FLAGS.max_seq_length,
             is_training=True,
             drop_remainder=True)
-        estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+
+        # 实现训练时迭代100次输出loss
+        tensors_to_log = {"train loss": "loss/Mean:0"}
+        logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
+        estimator.train(input_fn=train_input_fn, hooks=[logging_hook], max_steps=num_train_steps)
 
     if FLAGS.do_eval:
         eval_examples = processor.get_dev_examples(FLAGS.data_dir)
