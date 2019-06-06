@@ -1,7 +1,7 @@
 """
 使用bert预训练模型 uncased_L-12_H-768_A-12 做IMDB情感分类
 运行脚本：
-python imdb_classifier.py
+python run_imdb_classifier.py
     --data_dir=imdb
     --task_name=imdb
     --vocab_file=bert_model/uncased_L-12_H-768_A-12/vocab.txt
@@ -362,8 +362,7 @@ def file_based_convert_examples_to_features(
         if ex_index % 10000 == 0:
             tf.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
 
-        feature = convert_single_example(ex_index, example, label_list,
-                                         max_seq_length, tokenizer)
+        feature = convert_single_example(ex_index, example, label_list, max_seq_length, tokenizer)
 
         def create_int_feature(values):
             f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
@@ -374,8 +373,7 @@ def file_based_convert_examples_to_features(
         features["input_mask"] = create_int_feature(feature.input_mask)
         features["segment_ids"] = create_int_feature(feature.segment_ids)
         features["label_ids"] = create_int_feature([feature.label_id])
-        features["is_real_example"] = create_int_feature(
-            [int(feature.is_real_example)])
+        features["is_real_example"] = create_int_feature([int(feature.is_real_example)])
 
         tf_example = tf.train.Example(features=tf.train.Features(feature=features))
         writer.write(tf_example.SerializeToString())
@@ -590,78 +588,6 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         return output_spec
 
     return model_fn
-
-
-# This function is not used by this file but is still used by the Colab and
-# people who depend on it.
-def input_fn_builder(features, seq_length, is_training, drop_remainder):
-    """Creates an `input_fn` closure to be passed to TPUEstimator."""
-
-    all_input_ids = []
-    all_input_mask = []
-    all_segment_ids = []
-    all_label_ids = []
-
-    for feature in features:
-        all_input_ids.append(feature.input_ids)
-        all_input_mask.append(feature.input_mask)
-        all_segment_ids.append(feature.segment_ids)
-        all_label_ids.append(feature.label_id)
-
-    def input_fn(params):
-        """The actual input function."""
-        batch_size = params["batch_size"]
-
-        num_examples = len(features)
-
-        # This is for demo purposes and does NOT scale to large data sets. We do
-        # not use Dataset.from_generator() because that uses tf.py_func which is
-        # not TPU compatible. The right way to load data is with TFRecordReader.
-        d = tf.data.Dataset.from_tensor_slices({
-            "input_ids":
-                tf.constant(
-                    all_input_ids, shape=[num_examples, seq_length],
-                    dtype=tf.int32),
-            "input_mask":
-                tf.constant(
-                    all_input_mask,
-                    shape=[num_examples, seq_length],
-                    dtype=tf.int32),
-            "segment_ids":
-                tf.constant(
-                    all_segment_ids,
-                    shape=[num_examples, seq_length],
-                    dtype=tf.int32),
-            "label_ids":
-                tf.constant(all_label_ids, shape=[num_examples], dtype=tf.int32),
-        })
-
-        if is_training:
-            d = d.repeat()
-            d = d.shuffle(buffer_size=100)
-
-        d = d.batch(batch_size=batch_size, drop_remainder=drop_remainder)
-        return d
-
-    return input_fn
-
-
-# This function is not used by this file but is still used by the Colab and
-# people who depend on it.
-def convert_examples_to_features(examples, label_list, max_seq_length,
-                                 tokenizer):
-    """Convert a set of `InputExample`s to a list of `InputFeatures`."""
-
-    features = []
-    for (ex_index, example) in enumerate(examples):
-        if ex_index % 10000 == 0:
-            tf.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
-
-        feature = convert_single_example(ex_index, example, label_list,
-                                         max_seq_length, tokenizer)
-
-        features.append(feature)
-    return features
 
 
 def main(_):
