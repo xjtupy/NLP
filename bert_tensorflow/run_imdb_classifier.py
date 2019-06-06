@@ -31,7 +31,7 @@ flags = tf.flags
 
 FLAGS = flags.FLAGS
 
-# Required parameters
+# 定义必须要传的参数
 flags.DEFINE_string(
     "data_dir", None,
     "The input data dir. Should contain the .tsv files (or other data files) "
@@ -250,9 +250,16 @@ class IMDBProcessor(DataProcessor):
         return ["0", "1"]
 
 
-def convert_single_example(ex_index, example, label_list, max_seq_length,
-                           tokenizer):
-    """Converts a single `InputExample` into a single `InputFeatures`."""
+def convert_single_example(ex_index, example, label_list, max_seq_length, tokenizer):
+    """
+    将一个样本进行分析，然后将字转化为id, 标签转化为id,然后结构化到InputFeatures对象中
+    :param ex_index: 样本在examples列表中的index
+    :param example: 一个InputExample样本对象
+    :param label_list: 标签列表
+    :param max_seq_length:  序列的最大长度
+    :param tokenizer:  tokenizer对象
+    :return:
+    """
 
     if isinstance(example, PaddingInputExample):
         return InputFeatures(
@@ -261,11 +268,12 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
             segment_ids=[0] * max_seq_length,
             label_id=0,
             is_real_example=False)
-
+    # 创建一个保存label to index的词典
     label_map = {}
+    # 建立label-index之间的映射关系
     for (i, label) in enumerate(label_list):
         label_map[label] = i
-
+    # 分词
     tokens_a = tokenizer.tokenize(example.text_a)
     tokens_b = None
     if example.text_b:
@@ -352,10 +360,16 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     return feature
 
 
-def file_based_convert_examples_to_features(
-        examples, label_list, max_seq_length, tokenizer, output_file):
-    """Convert a set of `InputExample`s to a TFRecord file."""
-
+def file_based_convert_examples_to_features(examples, label_list, max_seq_length, tokenizer, output_file):
+    """
+    将所有的数据转化为TF_Record 结构，作为模型数据输入
+    :param examples:  InputExample格式的数据列表
+    :param label_list: 标签list
+    :param max_seq_length: 预先设定的最大序列长度，不要超过512
+    :param tokenizer: tokenizer 对象
+    :param output_file: tf.record 输出路径
+    :return:
+    """
     writer = tf.python_io.TFRecordWriter(output_file)
 
     for (ex_index, example) in enumerate(examples):
@@ -380,10 +394,15 @@ def file_based_convert_examples_to_features(
     writer.close()
 
 
-def file_based_input_fn_builder(input_file, seq_length, is_training,
-                                drop_remainder):
-    """Creates an `input_fn` closure to be passed to TPUEstimator."""
-
+def file_based_input_fn_builder(input_file, seq_length, is_training, drop_remainder):
+    """
+    返回一个input_fn引用
+    :param input_file:  tfrecord文件的路径
+    :param seq_length:  转换后的序列长度
+    :param is_training:  是否是训练模式
+    :param drop_remainder:  布尔值，若为True，则最后的batch若小于batch_size,则被去掉
+    :return:
+    """
     name_to_features = {
         "input_ids": tf.FixedLenFeature([seq_length], tf.int64),
         "input_mask": tf.FixedLenFeature([seq_length], tf.int64),
@@ -429,12 +448,13 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
 
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
-    """Truncates a sequence pair in place to the maximum length."""
-
-    # This is a simple heuristic which will always truncate the longer sequence
-    # one token at a time. This makes more sense than truncating an equal percent
-    # of tokens from each, since if one sequence is very short then each token
-    # that's truncated likely contains more information than a longer sequence.
+    """
+    若是句子对的输入，要权衡两个句子的长度来进行截断，以防止相加的长度大于最大长度
+    :param tokens_a:  分词后的句子a
+    :param tokens_b:   分词后的句子b
+    :param max_length:   最大长度
+    :return:  因为token_a和token_b都是列表，可变对象直接操作，不需要返回对象
+    """
     while True:
         total_length = len(tokens_a) + len(tokens_b)
         if total_length <= max_length:
@@ -445,9 +465,20 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
             tokens_b.pop()
 
 
-def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
-                 labels, num_labels, use_one_hot_embeddings):
-    """Creates a classification model."""
+def create_model(bert_config, is_training, input_ids, input_mask, segment_ids, labels, num_labels,
+                 use_one_hot_embeddings):
+    """
+    创建模型
+    :param bert_config:  bert 模型的配置参数
+    :param is_training:  判断是否是训练模式
+    :param input_ids:  输入的数据的index表示
+    :param input_mask:  mask列表
+    :param segment_ids:  句子的index
+    :param labels:  标签序列
+    :param num_labels:  标签的数量
+    :param use_one_hot_embeddings:
+    :return:
+    """
     model = modeling.BertModel(
         config=bert_config,
         is_training=is_training,
@@ -490,10 +521,20 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
         return loss, per_example_loss, logits, probabilities
 
 
-def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
-                     num_train_steps, num_warmup_steps, use_tpu,
-                     use_one_hot_embeddings):
-    """Returns `model_fn` closure for TPUEstimator."""
+def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate, num_train_steps, num_warmup_steps,
+                     use_tpu, use_one_hot_embeddings):
+    """
+    构建bert模型
+    :param bert_config:  bert模型的配置参数
+    :param num_labels:  # 任务中标签的数量
+    :param init_checkpoint:  # 初始化的check_point
+    :param learning_rate:  # 初始化的学习速率
+    :param num_train_steps:  # 训练的步数
+    :param num_warmup_steps:  # 训练时预热的步数
+    :param use_tpu:
+    :param use_one_hot_embeddings:  # 是否使用one_hot_embedding
+    :return:  返回一个model_fn的引用
+    """
 
     def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
         """The `model_fn` for TPUEstimator."""
