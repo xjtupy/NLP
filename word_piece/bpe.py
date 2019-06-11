@@ -63,10 +63,12 @@ raw_words = {"low": 5, "lower": 2, "newest": 6, "widest": 3}
 vocabs = process_raw_words(raw_words)
 
 num_merges = 10
-print('原来：', vocabs)
+print('原始词表：', vocabs)
+print('bpe算法处理过程：')
 for i in range(num_merges):
     pairs = get_symbol_pairs(vocabs)
     # 选择出现频率最高的pair
     symbol_pair = max(pairs, key=pairs.get)
+    print('出现最频繁的序列：', symbol_pair, pairs.get(symbol_pair))
     vocabs = merge_symbols(symbol_pair, vocabs)
-print('经过bpe：', vocabs)
+    print('合并最频繁的序列后的词表：', vocabs)
