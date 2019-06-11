@@ -90,8 +90,7 @@ class TrainingInstance(object):
         return self.__str__()
 
 
-def write_instance_to_example_files(instances, tokenizer, max_seq_length,
-                                    max_predictions_per_seq, output_files):
+def write_instance_to_example_files(instances, tokenizer, max_seq_length, max_predictions_per_seq, output_files):
     """Create TF example files from `TrainingInstance`s."""
     writers = []
     for output_file in output_files:
@@ -386,7 +385,7 @@ def create_masked_lm_predictions(tokens, masked_lm_prob,
         masked_lm_positions.append(p.index)
         masked_lm_labels.append(p.label)
 
-    return (output_tokens, masked_lm_positions, masked_lm_labels)
+    return output_tokens, masked_lm_positions, masked_lm_labels
 
 
 def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):

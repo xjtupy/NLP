@@ -3,6 +3,7 @@
 2. transformer pytorch版本  
 3. Bert Google源码和pytorch版本  
 4. 使用Bert预处理模型 uncased_L-12_H-768_A-12 来处理imdb情感二分类问题
+5. WordPiece的一个主要实现byte-pair encoding(BPE)算法  
 
 ### 感谢大佬的付出
 seq2seq：https://zhuanlan.zhihu.com/p/27608348  

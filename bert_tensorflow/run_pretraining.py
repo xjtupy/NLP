@@ -136,13 +136,14 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
             token_type_ids=segment_ids,
             use_one_hot_embeddings=use_one_hot_embeddings)
 
-        (masked_lm_loss,
-         masked_lm_example_loss, masked_lm_log_probs) = get_masked_lm_output(
-            bert_config, model.get_sequence_output(), model.get_embedding_table(),
-            masked_lm_positions, masked_lm_ids, masked_lm_weights)
+        (masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs) = get_masked_lm_output(bert_config,
+                                                                                             model.get_sequence_output(),
+                                                                                             model.get_embedding_table(),
+                                                                                             masked_lm_positions,
+                                                                                             masked_lm_ids,
+                                                                                             masked_lm_weights)
 
-        (next_sentence_loss, next_sentence_example_loss,
-         next_sentence_log_probs) = get_next_sentence_output(
+        (next_sentence_loss, next_sentence_example_loss, next_sentence_log_probs) = get_next_sentence_output(
             bert_config, model.get_pooled_output(), next_sentence_labels)
 
         total_loss = masked_lm_loss + next_sentence_loss
@@ -152,8 +153,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         initialized_variable_names = {}
         scaffold_fn = None
         if init_checkpoint:
-            (assignment_map, initialized_variable_names
-             ) = modeling.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+            (assignment_map, initialized_variable_names) = modeling.get_assignment_map_from_checkpoint(tvars,
+                                                                                                       init_checkpoint)
             if use_tpu:
 
                 def tpu_scaffold():
@@ -267,8 +268,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
         label_ids = tf.reshape(label_ids, [-1])
         label_weights = tf.reshape(label_weights, [-1])
 
-        one_hot_labels = tf.one_hot(
-            label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
+        one_hot_labels = tf.one_hot(label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
 
         # The `positions` tensor might be zero-padded (if the sequence is too
         # short to have the maximum number of predictions). The `label_weights`
@@ -279,7 +279,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
         denominator = tf.reduce_sum(label_weights) + 1e-5
         loss = numerator / denominator
 
-    return (loss, per_example_loss, log_probs)
+    return loss, per_example_loss, log_probs
 
 
 def get_next_sentence_output(bert_config, input_tensor, labels):
@@ -302,7 +302,7 @@ def get_next_sentence_output(bert_config, input_tensor, labels):
         one_hot_labels = tf.one_hot(labels, depth=2, dtype=tf.float32)
         per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
         loss = tf.reduce_mean(per_example_loss)
-        return (loss, per_example_loss, log_probs)
+        return loss, per_example_loss, log_probs
 
 
 def gather_indexes(sequence_tensor, positions):
@@ -314,8 +314,7 @@ def gather_indexes(sequence_tensor, positions):
 
     flat_offsets = tf.reshape(tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
     flat_positions = tf.reshape(positions + flat_offsets, [-1])
-    flat_sequence_tensor = tf.reshape(sequence_tensor,
-                                      [batch_size * seq_length, width])
+    flat_sequence_tensor = tf.reshape(sequence_tensor, [batch_size * seq_length, width])
     output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
     return output_tensor
 

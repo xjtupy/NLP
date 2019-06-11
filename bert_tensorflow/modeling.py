@@ -232,10 +232,13 @@ class BertModel(object):
                     kernel_initializer=create_initializer(config.initializer_range))
 
     def get_pooled_output(self):
+        # 第一个token隐状态输出
         return self.pooled_output
 
     def get_sequence_output(self):
-        """Gets final hidden layer of encoder.
+        """
+        最后一个transformer block的输出，形状为[batch_size, seq_length, hidden_size]，即对应每个batch中token_level的输出
+        Gets final hidden layer of encoder.
 
         Returns:
           float Tensor of shape [batch_size, seq_length, hidden_size] corresponding
@@ -244,6 +247,7 @@ class BertModel(object):
         return self.sequence_output
 
     def get_all_encoder_layers(self):
+        """  一个list,返回每个stack transformer black的输出，形状为[batch_size,sequence_length,hidden_size] """
         return self.all_encoder_layers
 
     def get_embedding_output(self):
@@ -878,6 +882,7 @@ def transformer_model(input_tensor,
                     kernel_initializer=create_initializer(initializer_range))
                 layer_output = dropout(layer_output, hidden_dropout_prob)
                 layer_output = layer_norm(layer_output + attention_output)
+                # 每一层transformer的输出
                 prev_output = layer_output
                 all_layer_outputs.append(layer_output)
 
